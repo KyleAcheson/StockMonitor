@@ -8,7 +8,7 @@ import yfinance as yf
 MAX_TIMEOUT_RETRIES = 3
 
 
-class StockData(TypedDict):
+class Quote(TypedDict):
     symbol: str
     price: float
     volume: int
@@ -21,14 +21,14 @@ class YFinanceProvider:
 
     ''' Provider class for YahooFinance. '''
 
-    def get_stock_data(self, symbol: str) -> Optional[StockData]:
+    def get_quote(self, symbol: str) -> Optional[Quote]:
         '''
-        Requests stock data for a given symbol from yahoo finance.
+        Requests stock quote for a given symbol from yahoo finance.
 
         :param symbol: The request stock symbol
         :type symbol: str
-        :return: Stock data including symbol, price, and volume
-        :rtype: StockData | None
+        :return: Quote data including symbol, price, and volume
+        :rtype: Quote | None
         '''
         for retry_count in range(MAX_TIMEOUT_RETRIES + 1):
             try:
@@ -52,7 +52,7 @@ class YFinanceProvider:
                         symbol,
                         retry_count,
                     )
-                return StockData(
+                return Quote(
                     symbol=stock_info["symbol"],
                     price=stock_info["regularMarketPrice"],
                     volume=stock_info["regularMarketVolume"],

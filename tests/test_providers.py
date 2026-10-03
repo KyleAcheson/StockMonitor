@@ -13,14 +13,14 @@ VALID_INFO = {
 }
 
 
-def test_returns_stock_data_for_valid_symbol(monkeypatch):
+def test_returns_quote_for_valid_symbol(monkeypatch):
     monkeypatch.setattr(
         providers.yf,
         "Ticker",
         lambda symbol: Mock(info=VALID_INFO),
     )
 
-    result = providers.YFinanceProvider().get_stock_data("AAPL")
+    result = providers.YFinanceProvider().get_quote("AAPL")
 
     assert result == {
         "symbol": "AAPL",
@@ -29,14 +29,14 @@ def test_returns_stock_data_for_valid_symbol(monkeypatch):
     }
 
 
-def test_returns_none_when_stock_data_is_missing(monkeypatch, caplog):
+def test_returns_none_when_quote_data_is_missing(monkeypatch, caplog):
     monkeypatch.setattr(
         providers.yf,
         "Ticker",
         lambda symbol: Mock(info={}),
     )
 
-    result = providers.YFinanceProvider().get_stock_data("NOTREAL")
+    result = providers.YFinanceProvider().get_quote("NOTREAL")
 
     assert result is None
     assert "No usable stock data returned for NOTREAL" in caplog.text
@@ -54,7 +54,7 @@ def test_retries_timeout_then_succeeds(monkeypatch, caplog):
     monkeypatch.setattr(providers.yf, "Ticker", ticker)
     monkeypatch.setattr(providers.time, "sleep", sleep)
 
-    result = providers.YFinanceProvider().get_stock_data("AAPL")
+    result = providers.YFinanceProvider().get_quote("AAPL")
 
     assert result["symbol"] == "AAPL"
     assert ticker.call_count == 2
@@ -69,7 +69,7 @@ def test_returns_none_after_all_timeout_retries(monkeypatch, caplog):
     monkeypatch.setattr(providers.yf, "Ticker", ticker)
     monkeypatch.setattr(providers.time, "sleep", sleep)
 
-    result = providers.YFinanceProvider().get_stock_data("AAPL")
+    result = providers.YFinanceProvider().get_quote("AAPL")
 
     assert result is None
     assert ticker.call_count == providers.MAX_TIMEOUT_RETRIES + 1
@@ -84,7 +84,7 @@ def test_logs_and_returns_none_for_unexpected_exception(monkeypatch, caplog):
         Mock(side_effect=RuntimeError("request failed")),
     )
 
-    result = providers.YFinanceProvider().get_stock_data("AAPL")
+    result = providers.YFinanceProvider().get_quote("AAPL")
 
     assert result is None
     assert "Failed to fetch stock data for AAPL" in caplog.text

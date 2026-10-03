@@ -17,17 +17,18 @@ def configure_logging():
 
 
 def main(requests):
+
     yf_provider = providers.YFinanceProvider()
-    stock_list = [
-        stock_data
-        for stock_data in (yf_provider.get_stock_data(symbol) for symbol in requests)
-        if stock_data is not None
+
+    quotes = [
+        quote
+        for quote in (yf_provider.get_quote(symbol) for symbol in requests)
+        if quote is not None
     ]
-    for stock in stock_list:
-        print(stock['symbol'], stock['price'])
-    breakpoint()  # Debugging breakpoint
+    for quote in quotes:
+        print(quote['symbol'], quote['price'])
 
 if __name__ == "__main__":
     configure_logging()
-    requests = ['AAPL', 'GOOGL', 'MSFT', 'rwfvwcrw']
+    requests = ['AAPL', 'GOOGL', 'MSFT']
     main(requests)
