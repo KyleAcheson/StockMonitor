@@ -28,6 +28,14 @@ def main(requests):
     for quote in quotes:
         print(quote['symbol'], quote['price'])
 
+    history = [
+        hist for hist in (yf_provider.get_historical_data(symbol) for symbol in requests)
+        if hist is not None
+    ]
+
+    for hist in history:
+        print(hist['symbol'], hist['price'])
+
 if __name__ == "__main__":
     configure_logging()
     requests = ['AAPL', 'GOOGL', 'MSFT']

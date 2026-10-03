@@ -2,6 +2,7 @@ import logging
 from unittest.mock import Mock
 
 from curl_cffi.requests.exceptions import Timeout
+import pytest
 
 from src import providers
 
