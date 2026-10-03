@@ -19,7 +19,17 @@ logger = logging.getLogger(__name__)
 
 class YFinanceProvider:
 
+    ''' Provider class for YahooFinance. '''
+
     def get_stock_data(self, symbol: str) -> Optional[StockData]:
+        '''
+        Requests stock data for a given symbol from yahoo finance.
+
+        :param symbol: The request stock symbol
+        :type symbol: str
+        :return: Stock data including symbol, price, and volume
+        :rtype: StockData | None
+        '''
         for retry_count in range(MAX_TIMEOUT_RETRIES + 1):
             try:
                 stock = yf.Ticker(symbol)
