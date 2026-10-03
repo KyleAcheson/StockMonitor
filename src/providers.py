@@ -1,6 +1,6 @@
 import logging
 import time
-from typing import Optional, TypedDict
+from typing import Callable, Optional, TypeVar, TypedDict
 from pandas import Timestamp
 
 from curl_cffi.requests.exceptions import Timeout
@@ -8,6 +8,7 @@ import yfinance as yf
 
 
 MAX_TIMEOUT_RETRIES = 3
+_Result = TypeVar("_Result")
 
 
 class Quote(TypedDict):
@@ -29,45 +30,27 @@ class YFinanceProvider:
 
     ''' Provider class for YahooFinance. '''
 
-    def get_quote(self, symbol: str) -> Optional[Quote]:
-        '''
-        Requests stock quote for a given symbol from yahoo finance.
-
-        :param symbol: The request stock symbol
-        :type symbol: str
-        :return: Quote data including symbol, price, and volume
-        :rtype: Quote | None
-        '''
+    def _request_with_retries(
+        self,
+        symbol: str,
+        data_kind: str,
+        request: Callable[[], Optional[_Result]],
+    ) -> Optional[_Result]:
         for retry_count in range(MAX_TIMEOUT_RETRIES + 1):
             try:
-                stock = yf.Ticker(symbol)
-                stock_info = stock.info
-                required_fields = (
-                    "symbol",
-                    "regularMarketPrice",
-                    "regularMarketVolume",
-                )
-                if not stock_info or any(
-                    field not in stock_info or stock_info[field] is None
-                    for field in required_fields
-                ):
-                    logger.warning("No usable stock data returned for %s", symbol)
-                    return None
-
-                if retry_count:
+                result = request()
+                if retry_count and result is not None:
                     logger.info(
-                        "Fetched stock data for %s after %d timeout retries",
+                        "Fetched %s for %s after %d timeout retries",
+                        data_kind,
                         symbol,
                         retry_count,
                     )
-                return Quote(
-                    symbol=stock_info["symbol"],
-                    price=stock_info["regularMarketPrice"],
-                    volume=stock_info["regularMarketVolume"],
-                )
+                return result
             except Timeout as exc:
                 logger.warning(
-                    "Timeout fetching stock data for %s on attempt %d/%d: %s",
+                    "Timeout fetching %s for %s on attempt %d/%d: %s",
+                    data_kind,
                     symbol,
                     retry_count + 1,
                     MAX_TIMEOUT_RETRIES + 1,
@@ -77,16 +60,49 @@ class YFinanceProvider:
                     time.sleep(2**retry_count)
                 else:
                     logger.error(
-                        "Giving up on %s after %d timeout retries (%d attempts)",
+                        "Giving up on %s for %s after %d timeout retries "
+                        "(%d attempts)",
+                        data_kind,
                         symbol,
                         MAX_TIMEOUT_RETRIES,
                         MAX_TIMEOUT_RETRIES + 1,
                     )
             except Exception:
-                logger.exception("Failed to fetch stock data for %s", symbol)
+                logger.exception("Failed to fetch or process %s for %s", data_kind, symbol)
                 return None
 
         return None
+
+    def get_quote(self, symbol: str) -> Optional[Quote]:
+        '''
+        Requests stock quote for a given symbol from yahoo finance.
+
+        :param symbol: The request stock symbol
+        :type symbol: str
+        :return: Quote data including symbol, price, and volume
+        :rtype: Quote | None
+        '''
+        def fetch_quote() -> Optional[Quote]:
+            stock_info = yf.Ticker(symbol).info
+            required_fields = (
+                "symbol",
+                "regularMarketPrice",
+                "regularMarketVolume",
+            )
+            if not stock_info or any(
+                field not in stock_info or stock_info[field] is None
+                for field in required_fields
+            ):
+                logger.warning("No usable quote data returned for %s", symbol)
+                return None
+
+            return Quote(
+                symbol=stock_info["symbol"],
+                price=stock_info["regularMarketPrice"],
+                volume=stock_info["regularMarketVolume"],
+            )
+
+        return self._request_with_retries(symbol, "quote", fetch_quote)
 
     def get_historical_data(
         self,
@@ -112,57 +128,28 @@ class YFinanceProvider:
         if period is None and not has_range_argument:
             period = "1y"
 
-        for retry_count in range(MAX_TIMEOUT_RETRIES + 1):
-            try:
-                stock = yf.Ticker(symbol)
-                if has_range_argument:
-                    historical_data = stock.history(start=start, end=end, interval=interval)
-                else:
-                    historical_data = stock.history(period=period)
+        def fetch_history() -> Optional[StockHistory]:
+            stock = yf.Ticker(symbol)
+            if has_range_argument:
+                historical_data = stock.history(start=start, end=end, interval=interval)
+            else:
+                historical_data = stock.history(period=period)
 
-                historical_data = historical_data.reset_index()
-                if historical_data.empty:
-                    logger.warning("No usable stock data returned for %s", symbol)
-                    return None
-
-                historical_data = historical_data.rename(columns={"Close": "price", "Volume": "volume", "Date": "date"})
-                historical_data = historical_data[["date", "price", "volume"]]
-                final_records = historical_data.to_dict()
-                final_records = {k: list(inner.values()) for k, inner in final_records.items()}
-
-                if retry_count:
-                    logger.info(
-                        "Fetched stock data for %s after %d timeout retries",
-                        symbol,
-                        retry_count,
-                    )
-
-                return StockHistory(
-                    symbol=symbol,
-                    price=final_records['price'],
-                    volume=final_records['volume'],
-                    date=final_records['date']
-                )
-
-            except Timeout as exc:
-                logger.warning(
-                    "Timeout fetching stock data for %s on attempt %d/%d: %s",
-                    symbol,
-                    retry_count + 1,
-                    MAX_TIMEOUT_RETRIES + 1,
-                    exc,
-                )
-                if retry_count < MAX_TIMEOUT_RETRIES:
-                    time.sleep(2**retry_count)
-                else:
-                    logger.error(
-                        "Giving up on %s after %d timeout retries (%d attempts)",
-                        symbol,
-                        MAX_TIMEOUT_RETRIES,
-                        MAX_TIMEOUT_RETRIES + 1,
-                    )
-            except Exception:
-                logger.exception("Failed to fetch stock data for %s", symbol)
+            historical_data = historical_data.reset_index()
+            if historical_data.empty:
+                logger.warning("No usable historical data returned for %s", symbol)
                 return None
 
-        return None
+            historical_data = historical_data.rename(columns={"Close": "price", "Volume": "volume", "Date": "date"})
+            historical_data = historical_data[["date", "price", "volume"]]
+            final_records = historical_data.to_dict()
+            final_records = {k: list(inner.values()) for k, inner in final_records.items()}
+
+            return StockHistory(
+                symbol=symbol,
+                price=final_records['price'],
+                volume=final_records['volume'],
+                date=final_records['date']
+            )
+
+        return self._request_with_retries(symbol, "historical data", fetch_history)
