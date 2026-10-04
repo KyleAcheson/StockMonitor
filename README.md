@@ -8,7 +8,8 @@ Install the package locally from the repository root:
 python -m pip install .
 ```
 
-For development and testing, install the optional test dependencies too:
+For development, tests, and running the example notebooks, install the optional
+development dependencies:
 
 ```bash
 python -m pip install -e ".[dev]"

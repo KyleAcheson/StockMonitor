@@ -4,11 +4,11 @@ from pathlib import Path
 if __package__:
     from . import providers
 else:
-    import providers
+    from StockMonitor import providers
 
 
 def configure_logging():
-    repo_root = Path(__file__).resolve().parent.parent
+    repo_root = Path(__file__).resolve().parents[2]
     log_directory = repo_root / ".local"
     log_directory.mkdir(parents=True, exist_ok=True)
     logging.basicConfig(

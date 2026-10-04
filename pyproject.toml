@@ -16,12 +16,12 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+    "ipykernel>=6",
     "pytest>=7,<9",
 ]
 
-[tool.setuptools]
-packages = ["StockMonitor"]
-package-dir = { "StockMonitor" = "src" }
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [tool.pytest.ini_options]
-pythonpath = ["."]
+pythonpath = ["src"]

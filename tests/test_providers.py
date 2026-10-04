@@ -6,7 +6,7 @@ from curl_cffi.requests.exceptions import Timeout
 import pandas as pd
 import pytest
 
-from src import providers
+from StockMonitor import providers
 
 
 VALID_INFO = {
