@@ -1,4 +1,5 @@
 import logging
+from threading import Barrier
 from unittest.mock import Mock
 
 from curl_cffi.requests.exceptions import Timeout
@@ -13,6 +14,32 @@ VALID_INFO = {
     "regularMarketPrice": 200.0,
     "regularMarketVolume": 1000,
 }
+
+
+def test_get_quotes_requests_symbols_concurrently_and_preserves_order(monkeypatch):
+    provider = providers.YFinanceProvider()
+    all_requests_started = Barrier(3)
+    requested_symbols = []
+
+    def fake_get_quote(symbol):
+        requested_symbols.append(symbol)
+        all_requests_started.wait(timeout=5)
+        return {
+            "symbol": symbol,
+            "price": 200.0,
+            "volume": 1000,
+        }
+
+    monkeypatch.setattr(provider, "get_quote", fake_get_quote)
+
+    result = provider.get_quotes(["AAPL", "GOOGL", "MSFT"])
+
+    assert result == [
+        {"symbol": "AAPL", "price": 200.0, "volume": 1000},
+        {"symbol": "GOOGL", "price": 200.0, "volume": 1000},
+        {"symbol": "MSFT", "price": 200.0, "volume": 1000},
+    ]
+    assert set(requested_symbols) == {"AAPL", "GOOGL", "MSFT"}
 
 
 def test_returns_quote_for_valid_symbol(monkeypatch):

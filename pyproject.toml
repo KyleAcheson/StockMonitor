@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "StockMonitor"
+version = "0.1.0"
+description = "Stock quote and historical data provider utilities"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "curl_cffi",
+    "pandas",
+    "yfinance",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7,<9",
+]
+
+[tool.setuptools]
+packages = ["StockMonitor"]
+package-dir = { "StockMonitor" = "src" }
+
+[tool.pytest.ini_options]
+pythonpath = ["."]

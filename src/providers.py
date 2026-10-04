@@ -2,6 +2,7 @@ import logging
 import time
 from concurrent.futures import ThreadPoolExecutor
 from typing import Callable, List, Optional, Sequence, TypeVar, TypedDict
+
 from pandas import Timestamp
 
 from curl_cffi.requests.exceptions import Timeout
@@ -17,6 +18,7 @@ class Quote(TypedDict):
     symbol: str
     price: float
     volume: int
+
 
 class StockHistory(TypedDict):
     symbol: str

@@ -1,7 +1,10 @@
 import logging
 from pathlib import Path
 
-import providers as providers
+if __package__:
+    from . import providers
+else:
+    import providers
 
 
 def configure_logging():
