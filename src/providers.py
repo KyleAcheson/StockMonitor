@@ -1,6 +1,7 @@
 import logging
 import time
-from typing import Callable, Optional, TypeVar, TypedDict
+from concurrent.futures import ThreadPoolExecutor
+from typing import Callable, List, Optional, Sequence, TypeVar, TypedDict
 from pandas import Timestamp
 
 from curl_cffi.requests.exceptions import Timeout
@@ -8,6 +9,7 @@ import yfinance as yf
 
 
 MAX_TIMEOUT_RETRIES = 3
+MAX_CONCURRENT_QUOTES = 3
 _Result = TypeVar("_Result")
 
 
@@ -29,6 +31,15 @@ logger = logging.getLogger(__name__)
 class YFinanceProvider:
 
     ''' Provider class for YahooFinance. '''
+
+    def get_quotes(self, symbols: Sequence[str]) -> List[Optional[Quote]]:
+        if not symbols:
+            return []
+
+        with ThreadPoolExecutor(
+            max_workers=min(MAX_CONCURRENT_QUOTES, len(symbols))
+        ) as executor:
+            return list(executor.map(self.get_quote, symbols))
 
     def _request_with_retries(
         self,

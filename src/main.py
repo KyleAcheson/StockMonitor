@@ -22,7 +22,7 @@ def main(requests):
 
     quotes = [
         quote
-        for quote in (yf_provider.get_quote(symbol) for symbol in requests)
+        for quote in yf_provider.get_quotes(requests)
         if quote is not None
     ]
     for quote in quotes:
